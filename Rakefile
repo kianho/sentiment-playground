@@ -1,23 +1,38 @@
+require "rake/clean"
+
+CLEAN
+
 task :default => ["data/txt_sentoken.all.dat"] do
 end
 
 #
-# Create a single file containing all instances
+# Create a single "master" file containing all instances.
 #
 file "data/txt_sentoken.all.dat" => \
   ["data/txt_sentoken/neg", "data/txt_sentoken/pos"] do |t|
   
-  # Prepend the class label to each line ('0' -> negative, '1' -> positive).
+  # Prepend the class label, cross-validation, and originating html doc-id to each line.
+  # - neg. label -> '0', pos. label -> '0').
+  # - the cross-validation and html doc-id are taken from the basename of each
+  #   .txt file.
   #
-  # NOTE: the class label is always the first character in the line, it is
-  # followed by a single space. The remaining characters in the line belong
-  # to the sentiment sentence.
+  # Each line adopts the format:
   #
-  # .'. Ignore the first two characters of each line to get only the sentance.
-  `ls -1 #{t.prerequisites[0]}/* | sort -n | xargs -I{} cat {} | awk '{print "0 " $0}' > #{t.name}`
-  `ls -1 #{t.prerequisites[1]}/* | sort -n | xargs -I{} cat {} | awk '{print "1 " $0}' >> #{t.name}`
+  #   <label> <cv>_<docid> <...raw sentence tokens separated by spaces>
+  #
+  # For example:
+  #
+  #   0 cv000_29416 plot : two teen couples go to a church party , drink and
+  #   0 cv000_29416 they get into an accident . 
+  #   0 cv000_29416 one of the guys dies , but his girlfriend continues to see him in her life , and has nightmares . 
+  #   0 cv000_29416 what's the deal ? 
+  #   0 cv000_29416 watch the movie and " sorta " find out . . . 
+  
+  `ls -1 #{t.prerequisites[0]}/* | parallel --gnu "sed 's/^/0 {/.} /g' {}" >> #{t.name}`
+  `ls -1 #{t.prerequisites[1]}/* | parallel --gnu "sed 's/^/1 {/.} /g' {}" >> #{t.name}`
 end
 
+CLEAN << "data/txt_sentoken.all.dat"
 
 #
 # Snippets for later
@@ -29,3 +44,5 @@ end
 # t.prerequisites.each do |p|
 #   sh "ls -1 #{p}/* | sort -n | xargs -I{} cat {} >> #{t.name}"
 # end
+# `ls -1 #{t.prerequisites[0]}/* | sort -n | xargs -I{} cat {} | awk '{print "0 " $0}' > #{t.name}`
+# `ls -1 #{t.prerequisites[1]}/* | sort -n | xargs -I{} cat {} | awk '{print "1 " $0}' >> #{t.name}`
