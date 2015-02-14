@@ -27,9 +27,14 @@ file "data/txt_sentoken.all.dat" => \
   #   0 cv000_29416 one of the guys dies , but his girlfriend continues to see him in her life , and has nightmares . 
   #   0 cv000_29416 what's the deal ? 
   #   0 cv000_29416 watch the movie and " sorta " find out . . . 
-  
-  `ls -1 #{t.prerequisites[0]}/* | parallel --gnu "sed 's/^/0 {/.} /g' {}" >> #{t.name}`
-  `ls -1 #{t.prerequisites[1]}/* | parallel --gnu "sed 's/^/1 {/.} /g' {}" >> #{t.name}`
+  #
+  target = t.name
+  prereqs = t.prerequisites
+  sep = "@@SEP@@"
+
+  `echo "label#{sep}id#{sep}sentence" > #{target}`
+  `ls -1 #{prereqs[0]}/* | parallel --gnu "sed 's/^/0#{sep}{/.}#{sep}/g' {}" >> #{target}`
+  `ls -1 #{prereqs[1]}/* | parallel --gnu "sed 's/^/1#{sep}{/.}#{sep}/g' {}" >> #{target}`
 end
 
 CLEAN << "data/txt_sentoken.all.dat"
