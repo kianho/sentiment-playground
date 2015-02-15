@@ -2,7 +2,12 @@ require "rake/clean"
 
 CLEAN
 
-task :default => ["data/txt_sentoken.all.dat"] do
+task :default => ["data/txt_sentoken.norm.dat"] do
+end
+
+file "data/txt_sentoken.norm.dat" => "data/txt_sentoken.all.dat" do |t|
+  target = t.name
+  source = t.source
 end
 
 #
@@ -18,16 +23,17 @@ file "data/txt_sentoken.all.dat" => \
   #
   # Each line adopts the format:
   #
-  #   <label> <cv>_<docid> <...raw sentence tokens separated by spaces>
+  #   <label><SEP><cv>_<docid><SEP><...raw sentence tokens separated by spaces>
   #
   # For example:
   #
-  #   0 cv000_29416 plot : two teen couples go to a church party , drink and
-  #   0 cv000_29416 they get into an accident . 
-  #   0 cv000_29416 one of the guys dies , but his girlfriend continues to see him in her life , and has nightmares . 
-  #   0 cv000_29416 what's the deal ? 
-  #   0 cv000_29416 watch the movie and " sorta " find out . . . 
+  #   0@@SEP@@cv000_29416@@SEP@@plot : two teen couples go to a church party , drink and
+  #   0@@SEP@@cv000_29416@@SEP@@they get into an accident . 
+  #   0@@SEP@@cv000_29416@@SEP@@one of the guys dies , but his girlfriend continues to see him in her life , and has nightmares . 
+  #   0@@SEP@@cv000_29416@@SEP@@what's the deal ? 
+  #   0@@SEP@@cv000_29416@@SEP@@watch the movie and " sorta " find out . . . 
   #
+  # where "@@SEP@@" is the output column separator (see code below).
   target = t.name
   prereqs = t.prerequisites
   sep = "@@SEP@@"
