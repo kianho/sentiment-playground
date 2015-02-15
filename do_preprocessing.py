@@ -16,8 +16,13 @@ Description:
 Usage:
     do_preprocessing.py [-s SEP]
 
+
 Options:
     -s SEP, --sep SEP   [default: @@SEP@@]
+
+
+Example workflow:
+    ./do_pipeline.py < txt_sentoken.all.dat > txt_sentoken.dat
 
 """
 
@@ -25,6 +30,8 @@ import os
 import sys
 import pandas as pd
 import re
+
+from collections import OrderedDict
 
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
@@ -52,6 +59,8 @@ STOP_WORDS = set(stopwords.words("english"))
 
 
 def valid_word(w):
+    """
+    """
     return not (
         RE_NON_WORD_CHARS.match(w) or
         RE_MULTI_CHAR_PUNCT.match(w) or
@@ -61,13 +70,16 @@ def valid_word(w):
 
 
 def my_tokenizer(s):
-    """
+    """Trivial whitespace tokenizer since the polarity 2.0 data is already
+    pre-tokenized.
+
     """
     return [ t for t in RE_SPACE.split(s) ]
 
 
 def iter_reviews(df, firstn=None, lastn=None):
     """
+
     """
 
     for (label, rev_id), subdf in (df.groupby(["label", "rev_id"])):
@@ -89,6 +101,7 @@ if __name__ == '__main__':
     df = pd.concat([id_split, df], axis=1)
 
     stemmer = PorterStemmer()
+    records = []
 
     for label, rev_id, text in iter_reviews(df):
         # tokenise and normalise the sentence text.
@@ -96,7 +109,10 @@ if __name__ == '__main__':
         tokens = [ t for t in tokens if valid_word(t) ]
         tokens = [ t for t in tokens if t not in STOP_WORDS ]
 
-        # re-construct the sentence from the normalised tokens.
+        # reconstruct a "complete" normalised review from the list of tokens.
         line = " ".join(tokens)
-        sys.stdout.write(opts["--sep"].join(("%d" % label, rev_id, line))
-                            + os.linesep)
+
+        records.append((label, line))
+
+    data = pd.DataFrame.from_records(records, columns=["label", "text"])
+    data.to_csv(sys.stdout)
