@@ -18,6 +18,8 @@ import sys
 import re
 
 from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 
@@ -31,12 +33,16 @@ RE_NON_WORD_CHARS = re.compile(r"(?:[?!)\";}\]\*:@\'\({\[])")
 RE_MULTI_CHAR_PUNCT = re.compile(r"(?:\-{2,}|\.{2,}|(?:\.\s){2,}\.)")
 
 # Integer or floating-point number.
-RE_NUMBER = re.compile(r"^\d+\.?\d*$")
+RE_NUMBER = re.compile(r"\d+\.?\d*")
 
 # Single non-alphabetic character.
 RE_SINGLE_NON_ALPHA = re.compile(r"^[^a-zA-Z]$")
 
+RE_ALPHA = re.compile(r"[a-zA-Z]+")
+
 STOP_WORDS = set(stopwords.words("english"))
+
+PORTER_STEMMER = PorterStemmer()
 
 
 def valid_word(w):
@@ -47,7 +53,7 @@ def valid_word(w):
         RE_MULTI_CHAR_PUNCT.match(w) or
         RE_NUMBER.match(w) or
         RE_SINGLE_NON_ALPHA.match(w)
-    )
+    ) and RE_ALPHA.match(w)
 
 
 def remove_non_words(tokens):
@@ -58,13 +64,13 @@ def remove_stop_words(tokens, stop_words=STOP_WORDS):
     return [ t for t in tokens if t not in stop_words ]
 
 
-def my_tokenizer(s):
-    """Trivial whitespace tokenizer since the polarity 2.0 data is already
-    pre-tokenized.
+def stem_words(tokens):
+    return [ PORTER_STEMMER.stem(t) for t in tokens ]
 
-    """
-    return [ t for t in RE_SPACE.split(s) ]
 
+def normalize_tokens(tokens):
+    return [ t.lower() for t in remove_non_words(
+             remove_stop_words( stem_words(tokens))) ]
 
 def make_tfidf_matrix(documents):
     """TODO
