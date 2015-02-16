@@ -15,6 +15,10 @@ Description:
 
 import os
 import sys
+import re
+
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 
 RE_SPACE = re.compile(r"\s+")
@@ -46,9 +50,24 @@ def valid_word(w):
     )
 
 
+def remove_non_words(tokens):
+    return [ t for t in tokens if valid_word(t) ]
+
+
+def remove_stop_words(tokens, stop_words=STOP_WORDS):
+    return [ t for t in tokens if t not in stop_words ]
+
+
 def my_tokenizer(s):
     """Trivial whitespace tokenizer since the polarity 2.0 data is already
     pre-tokenized.
 
     """
     return [ t for t in RE_SPACE.split(s) ]
+
+
+def make_tfidf_matrix(documents):
+    """TODO
+    """
+
+    return
