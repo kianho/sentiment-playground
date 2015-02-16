@@ -5,9 +5,12 @@ CLEAN
 task :default => ["data/txt_sentoken.norm.dat"] do
 end
 
+#
+# Normalise and aggregate the polarity 2.0 dataset such that each line contains
+# the class label and a single review.
+#
 file "data/txt_sentoken.norm.dat" => "data/txt_sentoken.all.dat" do |t|
-  target = t.name
-  source = t.source
+  sh "./do_norm_poldata.py < #{t.prerequisites.first} > #{t.name}"
 end
 
 #
