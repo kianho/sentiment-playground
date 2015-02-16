@@ -14,7 +14,7 @@ Description:
     partial) contents of reviews.
 
 Usage:
-    do_preprocessing.py [-s SEP]
+    do_norm_poldata.py [-s SEP]
 
 
 Options:
@@ -39,47 +39,10 @@ import pandas as pd
 import re
 
 from collections import OrderedDict
-
+from docopt import docopt
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
-
-from docopt import docopt
-
-RE_SPACE = re.compile(r"\s+")
-
-# Characters that cannot appear within words, taken from nltk.tokenize.punkt.
-# Note that some punctuation characters are allowed, e.g. '.' and ','.
-RE_NON_WORD_CHARS = re.compile(r"(?:[?!)\";}\]\*:@\'\({\[])")
-
-# Multi-character punctuation, e.g. ellipsis, en-, and em-dashes.
-RE_MULTI_CHAR_PUNCT = re.compile(r"(?:\-{2,}|\.{2,}|(?:\.\s){2,}\.)")
-
-# Integer or floating-point number.
-RE_NUMBER = re.compile(r"^\d+\.?\d*$")
-
-# Single non-alphabetic character.
-RE_SINGLE_NON_ALPHA = re.compile(r"^[^a-zA-Z]$")
-
-STOP_WORDS = set(stopwords.words("english"))
-
-
-def valid_word(w):
-    """
-    """
-    return not (
-        RE_NON_WORD_CHARS.match(w) or
-        RE_MULTI_CHAR_PUNCT.match(w) or
-        RE_NUMBER.match(w) or
-        RE_SINGLE_NON_ALPHA.match(w)
-    )
-
-
-def my_tokenizer(s):
-    """Trivial whitespace tokenizer since the polarity 2.0 data is already
-    pre-tokenized.
-
-    """
-    return [ t for t in RE_SPACE.split(s) ]
+from utils import *
 
 
 def iter_reviews(df, firstn=None, lastn=None):
@@ -125,9 +88,11 @@ if __name__ == '__main__':
         records.append((label, line))
 
     df = pd.DataFrame.from_records(records, columns=["label", "text"])
-    X, y = df.text, df.label
+    #X, y = df.text, df.label
 
-    #data.to_csv(sys.stdout)
+    df.to_csv(sys.stdout)
+
+    sys.exit()
 
     #
     # Use the tf-idf statistic to weight the importance of each term.
