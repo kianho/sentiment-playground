@@ -2,22 +2,41 @@ require "rake/clean"
 
 CLEAN
 
-task :default => ["data/txt_sentoken.norm.dat"] do
+task :default => ["data/sfu_review_corpus/sfu_review_corpus.norm.dat",
+                  "data/polarity2.0/polarity2.0.norm.dat"] do
 end
 
+#
+# Make the sfu_review_corpus normalised training data
+#
+file "data/sfu_review_corpus/sfu_review_corpus.norm.dat" => \
+  "data/sfu_review_corpus/SFU_Review_Corpus_Raw/MOVIES" do |t|
+  src = t.prerequisites[0]
+
+  # assign negative and positive labels.
+  sh "ls -1 #{src}/no*.txt | ./make_train_data_sfu_review_corpus.py -l 0 > #{t.name}"
+  sh "ls -1 #{src}/yes*.txt | ./make_train_data_sfu_review_corpus.py -l 1 | tail -n+2 >> #{t.name}"
+end
+
+
+#
+# Make the polarity2.0 normalised training data
 #
 # Normalise and aggregate the polarity 2.0 dataset such that each line contains
 # the class label and a single review.
 #
-file "data/txt_sentoken.norm.dat" => "data/txt_sentoken.all.dat" do |t|
-  sh "./do_norm_poldata.py < #{t.prerequisites.first} > #{t.name}"
+file "data/polarity2.0/polarity2.0.norm.dat" => \
+  "data/polarity2.0/polarity2.0.raw.dat" do |t|
+
+  sh "./make_train_data_polarity2.0.py < #{t.prerequisites.first} > #{t.name}"
+
 end
 
 #
-# Create a single "master" file containing all instances.
+# Make the polarity2.0 raw training data
 #
-file "data/txt_sentoken.all.dat" => \
-  ["data/txt_sentoken/neg", "data/txt_sentoken/pos"] do |t|
+file "data/polarity2.0/polarity2.0.raw.dat" => \
+  ["data/polarity2.0/txt_sentoken/neg", "data/polarity2.0/txt_sentoken/pos"] do |t|
   
   # Prepend the class label, cross-validation, and originating html doc-id to each line.
   # - neg. label -> '0', pos. label -> '0').
@@ -42,11 +61,11 @@ file "data/txt_sentoken.all.dat" => \
   sep = "@@SEP@@"
 
   `echo "label#{sep}id#{sep}sentence" > #{target}`
-  `ls -1 #{prereqs[0]}/* | parallel --gnu "sed 's/^/0#{sep}{/.}#{sep}/g' {}" >> #{target}`
-  `ls -1 #{prereqs[1]}/* | parallel --gnu "sed 's/^/1#{sep}{/.}#{sep}/g' {}" >> #{target}`
+  `ls -1 #{prereqs[0]}/* | parallel --gnu -k "sed 's/^/0#{sep}{/.}#{sep}/g' {}" >> #{target}`
+  `ls -1 #{prereqs[1]}/* | parallel --gnu -k "sed 's/^/1#{sep}{/.}#{sep}/g' {}" >> #{target}`
 end
 
-CLEAN << "data/txt_sentoken.all.dat"
+CLEAN << ["data/polarity2.0/polarity2.0.raw.dat", "data/sfu_review_corpus.norm.dat"]
 
 #
 # Snippets for later
