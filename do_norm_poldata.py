@@ -81,6 +81,7 @@ if __name__ == '__main__':
         tokens = my_tokenizer(text)
         tokens = [ t for t in tokens if valid_word(t) ]
         tokens = [ t for t in tokens if t not in STOP_WORDS ]
+        tokens = [ stemmer.stem(t) for t in tokens ]
 
         # reconstruct a "complete" normalised review from the list of tokens.
         line = " ".join(tokens)
