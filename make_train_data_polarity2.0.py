@@ -14,7 +14,7 @@ Description:
     partial) contents of reviews.
 
 Usage:
-    do_norm_poldata.py [-s SEP]
+    make_train_data_polarity2.0.py [-s SEP]
 
 
 Options:
@@ -44,6 +44,8 @@ from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
 from utils import *
 
+STEMMER = PorterStemmer()
+
 
 def iter_reviews(df, firstn=None, lastn=None):
     """
@@ -63,6 +65,14 @@ def iter_reviews(df, firstn=None, lastn=None):
     return
 
 
+def tokenize(text):
+    # polarity2.0 sentences are already pre-tokenized and re-concatenated into
+    # strings where each token is separated by a single space.
+    tokens = [ t for t in RE_SPACE.split(text) ]
+
+    return normalize_tokens(tokens)
+
+
 if __name__ == '__main__':
     opts = docopt(__doc__)
 
@@ -72,18 +82,13 @@ if __name__ == '__main__':
     id_split = pd.DataFrame(df.id.str.split("_").tolist(),
                             columns=["cv", "rev_id"])
     df = pd.concat([id_split, df], axis=1)
-
-    stemmer = PorterStemmer()
     records = []
 
     for label, rev_id, text in iter_reviews(df):
-        # tokenise and normalise the sentence text.
-        tokens = my_tokenizer(text)
-        tokens = [ t for t in tokens if valid_word(t) ]
-        tokens = [ t for t in tokens if t not in STOP_WORDS ]
-        tokens = [ stemmer.stem(t) for t in tokens ]
+        tokens = tokenize(text)
 
-        # reconstruct a "complete" normalised review from the list of tokens.
+        # reconstruct a "complete" normalised review from the list of normalized
+        # tokens.
         line = " ".join(tokens)
 
         records.append((label, line))
@@ -91,7 +96,7 @@ if __name__ == '__main__':
     df = pd.DataFrame.from_records(records, columns=["label", "text"])
     #X, y = df.text, df.label
 
-    df.to_csv(sys.stdout)
+    df.to_csv(sys.stdout, index=None, encoding="utf-8")
 
     sys.exit()
 
