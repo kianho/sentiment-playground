@@ -72,6 +72,7 @@ def normalize_tokens(tokens):
     return [ t.lower() for t in remove_non_words(
              remove_stop_words( stem_words(tokens))) ]
 
+
 def make_tfidf_matrix(documents):
     """TODO
     """

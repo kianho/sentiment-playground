@@ -2,9 +2,19 @@ require "rake/clean"
 
 CLEAN
 
-task :default => ["data/sfu_review_corpus/sfu_review_corpus.norm.dat",
-                  "data/polarity2.0/polarity2.0.norm.dat"] do
+task :default => ["mdl/polarity2.0.mdl"] do
 end
+
+#
+# Train the polarity2.0 model.
+#
+file "mdl/polarity2.0.mdl" => ["data/polarity2.0/polarity2.0.norm.dat"] do |t|
+  target = t.name
+  src = t.prerequisites[0]
+
+  sh "./make_model.py -d #{src} -o #{t.name}"
+end
+
 
 #
 # Make the sfu_review_corpus normalised training data
@@ -29,7 +39,6 @@ file "data/polarity2.0/polarity2.0.norm.dat" => \
   "data/polarity2.0/polarity2.0.raw.dat" do |t|
 
   sh "./make_train_data_polarity2.0.py < #{t.prerequisites.first} > #{t.name}"
-
 end
 
 #
