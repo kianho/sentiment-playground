@@ -6,15 +6,13 @@ task :default => ["mdl/polarity2.0.mdl"] do
 end
 
 #
-# Train the polarity2.0 model.
+# Train the polarity2.0 model (and vocab).
 #
 file "mdl/polarity2.0.mdl" => ["data/polarity2.0/polarity2.0.norm.dat"] do |t|
-  target = t.name
   src = t.prerequisites[0]
-
-  sh "./make_model.py -d #{src} -o #{t.name}"
+  vocab_target = t.name.pathmap("%X.vocab.dat")
+  sh "./make_model.py -d #{src} -m #{t.name} -V #{vocab_target}"
 end
-
 
 #
 # Make the sfu_review_corpus normalised training data
@@ -74,7 +72,8 @@ file "data/polarity2.0/polarity2.0.raw.dat" => \
   `ls -1 #{prereqs[1]}/* | parallel --gnu -k "sed 's/^/1#{sep}{/.}#{sep}/g' {}" >> #{target}`
 end
 
-CLEAN << ["data/polarity2.0/polarity2.0.raw.dat", "data/sfu_review_corpus.norm.dat"]
+CLEAN << ["data/polarity2.0/polarity2.0.raw.dat",
+          "data/sfu_review_corpus.norm.dat", "mdl/polarity2.0.mdl"]
 
 #
 # Snippets for later
