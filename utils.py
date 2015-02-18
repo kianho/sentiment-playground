@@ -16,6 +16,7 @@ Description:
 import os
 import sys
 import re
+import numpy
 
 from functools import reduce
 
@@ -105,13 +106,41 @@ def preprocess_blob(blob, remove_html=False):
     return terms
 
 
-def make_tfidf_matrix(documents):
-    """TODO
+def make_tfidf_matrix(doc_term_lists, vocab=None):
     """
 
-    return
+    Arguments:
+        doc_term_lists:
+            list of document term lists.
+
+        vocab (default: None):
+            list/set of terms to preserve from each document term list. This is
+            typically the set of terms used by a pre-trained model. Terms not found in
+            this collection are removed from each document term list.
+
+    Returns:
+        ...
+
+    """
+
+    if vocab:
+        X = [ [ t for t in terms if t in vocab ] for terms in doc_term_lists ]
+
+    X = numpy.array([ " ".join(terms) for terms in doc_term_lists ])
+
+    count_vectoriser = CountVectorizer(tokenizer=lambda s : s.split())
+    tfidf_transformer = TfidfTransformer(use_idf=True)
+
+    X_counts = count_vectoriser.fit(X)
+    X_counts = count_vectoriser.transform(X)
+
+    X_tfidf = tfidf_transformer.fit(X_counts)
+    X_tfidf = tfidf_transformer.transform(X_counts)
+
+    return X_tfidf, count_vectoriser.vocabulary_
 
 
 if __name__ == "__main__":
     blob = "Good muffins cost $3.88\nin New York.  Please buy me\ntwo of them.\n\nThanks."
-    print preprocess_blob(blob)
+    #print preprocess_blob(blob)
+    print make_tfidf_matrix([ preprocess_blob(b) for b in (blob, blob) ])
