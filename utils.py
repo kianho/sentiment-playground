@@ -91,7 +91,7 @@ def preprocess_blob(blob, remove_html=False):
 
     Arguments:
         blob --
-        remove_html --
+        remove_html -- TODO, 
 
     Returns:
         a single list of normalised terms associated with a single document
@@ -114,21 +114,15 @@ def make_tfidf_matrix(doc_term_lists, vocab=None):
             list of document term lists.
 
         vocab (default: None):
-            list/set of terms to preserve from each document term list. This is
-            typically the set of terms used by a pre-trained model. Terms not found in
-            this collection are removed from each document term list.
+            ...
 
     Returns:
         ...
 
     """
 
-    if vocab:
-        X = [ [ t for t in terms if t in vocab ] for terms in doc_term_lists ]
-
     X = numpy.array([ " ".join(terms) for terms in doc_term_lists ])
-
-    count_vectoriser = CountVectorizer(tokenizer=lambda s : s.split())
+    count_vectoriser = CountVectorizer(tokenizer=lambda s : s.split(), vocabulary=vocab)
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
     X_counts = count_vectoriser.fit(X)
