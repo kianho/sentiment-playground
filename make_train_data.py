@@ -13,11 +13,11 @@ Description:
     into a minimal-quoted csv format.
 
 Usage:
-    make_train_data.py --label LABEL [--dat DAT] [--encoding ENCODING]
+    make_train_data.py --label LABEL [--csv CSV] [--encoding ENCODING]
 
 Options:
     -l, --label LABEL           Label to assign each review instance.
-    -d, --dat DAT               Write output to .dat file.
+    -c, --csv CSV               Write output to .csv file.
     -e, --encoding ENCODING     Input file encoding [default: utf-8].
 
 Example workflow:
@@ -44,5 +44,5 @@ if __name__ == '__main__':
         records.append((label, blob))
 
     df = pandas.DataFrame.from_records(records, columns=None)
-    df.to_csv(opts["--dat"] if opts["--dat"] else sys.stdout,
+    df.to_csv(opts["--csv"] if opts["--csv"] else sys.stdout,
             index=None, header=False, encoding="utf-8")
