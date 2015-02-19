@@ -24,6 +24,8 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.externals import joblib
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 
@@ -134,7 +136,46 @@ def make_tfidf_matrix(doc_term_lists, vocab=None):
     return X_tfidf, count_vectoriser.vocabulary_
 
 
+def train_model(clf, dat_fn, mdl_fn, vocab_fn):
+    """
+
+    Arguments:
+        clf --
+        dat_fn --
+        mdl_fn --
+        vocab_fn --
+
+    Returns:
+        ...
+
+    """
+
+    df = pandas.read_csv(dat_fn)
+    df.text = df.text.apply(lambda s : s.split())
+    X, Y = df.text, df.label
+
+    # Use the standard tf-idf matrix representation of the dataset.
+    X_tfidf, X_vocab = make_tfidf_matrix(X.tolist())
+
+    # Train the model
+    clf.fit(X_tfidf.toarray(), Y)
+
+    # Save the vocabulary to disk
+    vocab = pandas.DataFrame(X_vocab.items(), columns=["term", "index"])
+    vocab.to_csv(vocab_fn, index=None)
+
+    # Save (pickle) the model to disk
+    joblib.dump(clf, mdl_fn)
+
+    return
+
+
 if __name__ == "__main__":
-    blob = "Good muffins cost $3.88\nin New York.  Please buy me\ntwo of them.\n\nThanks."
+    #blob = "Good muffins cost $3.88\nin New York.  Please buy me\ntwo of them.\n\nThanks."
     #print preprocess_blob(blob)
-    print make_tfidf_matrix([ preprocess_blob(b) for b in (blob, blob) ])
+    #print make_tfidf_matrix([ preprocess_blob(b) for b in (blob, blob) ])
+    dat_fn = 
+    clf = RandomForestClassifier()
+    train_model(clf, )
+
+    #print clf
