@@ -3,7 +3,8 @@ require "rake/clean"
 CLEAN
 
 task :dev => [] do
-  sh 'bash -c "./sentiment.py train -c ./data/polarity2.0/polarity2.0.csv -C rf -m ./dev/polarity2.0.mdl -V ./dev/polarity2.0.vocab.csv"'
+  sh './sentiment.py train -c ./data/polarity2.0/polarity2.0.csv -C RandomForestClassifier \
+          -m ./dev/polarity2.0.mdl -V ./dev/polarity2.0.vocab.csv compute_importances=True n_jobs=4 oob_score=True'
 end
 
 task :default => ["mdl/polarity2.0.mdl"] do
