@@ -12,12 +12,12 @@ Description:
     ...
 
 Usage:
-    sentiment.py train -c <csv> [-C <str>] -m <mdl> -V <csv> [-e <encoding>]
+    sentiment.py train -c <csv> [-C <str>] -m <mdl> -V <csv> [-e <encoding>] [<param> ...]
     sentiment.py classify (-t <file> | --) -m <mdl> -V <csv> [-e <encoding>]
 
 Options:
     -c <csv>        Training .csv file.
-    -C <str>        Classifier type [default: rf].
+    -C <str>        Valid sklearn classifier [default: RandomForestClassifier].
     -m <mdl>        Output .mdl file.
     -V <csv>        Output vocabulary .csv file.
     -t <file>       File containing incoming text to be classified. 
@@ -45,32 +45,25 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 from docopt import docopt
 
-
-RE_SPACE = re.compile(r"\s+")
-
-# Characters that cannot appear within words, taken from nltk.tokenize.punkt.
-# Note that some punctuation characters are allowed, e.g. '.' and ','.
-NON_WORD_CHARS_PAT = r"(?:[?!)\";}\]\*:@\'\({\[])"
-RE_NON_WORD_CHARS = re.compile(NON_WORD_CHARS_PAT)
-
-# Multi-character punctuation, e.g. ellipsis, en-, and em-dashes.
-# TODO:
-# - more accurate way of removing punctuations
-RE_MULTI_CHAR_PUNCT = re.compile(r"(?:\-{2,}|\.{2,}|(?:\.\s){2,}\.)")
-
-# Integer or floating-point number.
-RE_NUMBER = re.compile(r"\d+\.?\d*")
-
-# Single non-alphabetic character.
-RE_SINGLE_NON_ALPHA = re.compile(r"^[^a-zA-Z]$")
+STOP_WORDS = set(stopwords.words("english"))
+PORTER_STEMMER = PorterStemmer()
 
 RE_ALPHA = re.compile(r"[a-zA-Z]+")
 
-STOP_WORDS = set(stopwords.words("english"))
-
-PORTER_STEMMER = PorterStemmer()
-
-COUNTER = 0
+# Tokens that match this regular expression will be ignored.
+NON_TOKEN_RE = re.compile(r"""
+    # Non-word characters, taken from nltk.tokenize.punkt.
+    ((?:[?!)\";}\]\*:@\'\({\[]))
+    |
+    # Multi-character punctuation, e.g. ellipses, en-, and em-dashes.
+    (?:\-{2,}|\.{2,}|(?:\.\s){2,}\.)
+    |
+    # Integer or floating-point number.
+    (\d+\.?\d*")
+    |
+    # Single non-alphabetic character.
+    (^[^a-zA-Z]$)
+""")
 
 
 def read_blob(buf, encoding):
@@ -91,22 +84,43 @@ def read_vocab(vocab_fn):
     return dict(df.to_records(index=None))
 
 
+def parse_clf_kwargs(params):
+    """Parse the classifier constructor keyword arguments specified from a list
+    of "<key>=<value>" strings. These values are typically supplied at the
+    command-line.
 
-def valid_word(w):
     """
-    TODO:
-    - use single regular expression composed of individual patterns.
-    """
-    return not (
-        RE_NON_WORD_CHARS.match(w) or
-        RE_MULTI_CHAR_PUNCT.match(w) or
-        RE_NUMBER.match(w) or
-        RE_SINGLE_NON_ALPHA.match(w)
-    ) and RE_ALPHA.match(w)
+    def parse_val(s):
+        val = s
+
+        if s in set(("True", "False")):
+            val = (s == "True")
+        else:
+            for _type in (int, float):
+                try:
+                    val = _type(s)
+                    break
+                except ValueError:
+                    continue
+
+        return val
+
+    clf_kwargs = {}
+    for k, s in (p.split("=") for p in params):
+        clf_kwargs[k] = parse_val(s)
+
+    return clf_kwargs
+
+
+def valid_token(t, stop_words=None):
+    if stop_words is None:
+        stop_words = set()
+    return ((not NON_TOKEN_RE.match(t))
+            and RE_ALPHA.match(t) and (t.lower() not in stop_words))
 
 
 def remove_non_words(tokens):
-    return ( t for t in tokens if valid_word(t) )
+    return ( t for t in tokens if valid_token(t) )
 
 
 def remove_stop_words(tokens, stop_words=STOP_WORDS):
@@ -160,7 +174,7 @@ def make_tfidf_matrix(docs, vocab=None):
     return X_tfidf, count_vectoriser.vocabulary_
 
 
-def train_model(clf_type, csv_fn, mdl_fn, vocab_fn):
+def train_model(clf, csv_fn, mdl_fn, vocab_fn):
     """
     """
     df = pandas.read_csv(csv_fn, index_col=None, header=None)
@@ -168,11 +182,6 @@ def train_model(clf_type, csv_fn, mdl_fn, vocab_fn):
 
     # Use the standard tf-idf matrix representation of the dataset.
     X_tfidf, X_vocab = make_tfidf_matrix(X)
-
-    if clf_type == "rf":
-        clf = RandomForestClassifier()
-    else:
-        raise NotImplementedError
 
     # Train the model
     clf.fit(X_tfidf.toarray(), Y)
@@ -190,15 +199,10 @@ def train_model(clf_type, csv_fn, mdl_fn, vocab_fn):
 def classify_text(buf, mdl_fn, vocab_fn, encoding):
     """
     """
-
     blob = read_blob(buf, encoding=encoding)
     vocab = read_vocab(vocab_fn)
-    docs = [blob]
-    X_tfidf, X_vocab = make_tfidf_matrix(docs, vocab=vocab)
+    X_tfidf, X_vocab = make_tfidf_matrix([blob], vocab=vocab)
     clf = joblib.load(mdl_fn)
-
-    # TODO:
-    # - compare the model vocab with the incoming vocab.
 
     return clf.predict(X_tfidf.toarray())
 
@@ -207,7 +211,9 @@ if __name__ == "__main__":
     opts = docopt(__doc__)
 
     if opts["train"]:
-        train_model(opts["-C"], opts["-c"], opts["-m"], opts["-V"])
+        clf_kwargs = parse_clf_kwargs(opts["<param>"])
+        clf = eval(opts["-C"])(**clf_kwargs)
+        train_model(clf, opts["-c"], opts["-m"], opts["-V"])
     elif opts["classify"]:
         classify_text(opts["-t"], opts["-m"], opts["-V"], opts["-e"])
     else:
