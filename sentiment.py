@@ -49,6 +49,11 @@ STOP_WORDS = set(stopwords.words("english"))
 PORTER_STEMMER = PorterStemmer()
 
 RE_ALPHA = re.compile(r"[a-zA-Z]+")
+RE_PUNCT = re.compile(r"""[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]""")
+RE_PUNCT_WORD = re.compile(r"^%s+$" % RE_PUNCT.pattern)
+RE_NON_WORD = re.compile(r"((?:[?!)\";}\]\*:@\'\({\[]))")
+RE_RATING = re.compile(r"[0-9]+/[0-9]+")
+RE_NUMBER_ONLY = re.compile(r"^(\d+\.?\d*)$")
 
 # Tokens that match this regular expression will be ignored.
 NON_TOKEN_RE = re.compile(r"""
@@ -66,7 +71,7 @@ NON_TOKEN_RE = re.compile(r"""
 """)
 
 
-def read_blob(buf, encoding):
+def read_blob(buf, encoding="utf-8"):
     if os.path.exists(buf):
         with open(buf, "rb") as f:
             str_val = codecs.getreader(encoding)(f).read()
@@ -159,10 +164,10 @@ def preprocess_blob(blob):
     return terms
 
 
-def make_tfidf_matrix(docs, vocab=None):
+def make_tfidf_matrix(docs, tokenizer=preprocess_blob, vocab=None):
     """
     """
-    count_vectoriser = CountVectorizer(tokenizer=preprocess_blob, vocabulary=vocab)
+    count_vectoriser = CountVectorizer(tokenizer=tokenizer, vocabulary=vocab)
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
     X_counts = count_vectoriser.fit(docs)
