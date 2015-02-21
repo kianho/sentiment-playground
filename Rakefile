@@ -14,6 +14,10 @@ def bash(cmd)
 end
 
 task :default=> [] do
+  sh './evaluations.py cv -c ./data/polarity2.0/polarity2.0.csv -k 10'
+end
+
+task :default2=> [] do
   sh './evaluations.py heldout -m ./mdl/polarity2.0.mdl -c ./data/sfu_review_corpus/sfu_review_corpus.dat'
 end
 
