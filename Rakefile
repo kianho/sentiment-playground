@@ -13,16 +13,8 @@ def bash(cmd)
   IO.popen(["/bin/bash", "-c", cmd]) { |io| io.read }
 end
 
-task :dev => [] do
-  bash %q( cat < <( seq 1 10 ) )
-end
-
-task :dev2 => [] do
-  sh './sentiment.py train -c ./data/polarity2.0/polarity2.0.csv -C RandomForestClassifier \
-          -m ./dev/polarity2.0.mdl -V ./dev/polarity2.0.vocab.csv compute_importances=True n_jobs=4 oob_score=True'
-end
-
-task :default => ["mdl/polarity2.0.mdl"] do
+task :default=> [] do
+  sh './evaluations.py heldout -m ./mdl/polarity2.0.mdl -c ./data/sfu_review_corpus/sfu_review_corpus.dat'
 end
 
 #
