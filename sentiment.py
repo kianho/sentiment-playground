@@ -12,14 +12,13 @@ Description:
     ...
 
 Usage:
-    sentiment.py train -c <csv> [-C <str>] -m <mdl> -V <csv> [-e <encoding>] [<param> ...]
-    sentiment.py classify (-t <file> | --) -m <mdl> -V <csv> [-e <encoding>]
+    sentiment.py train -c <csv> [-C <str>] -m <mdl> [-e <encoding>] [<param> ...]
+    sentiment.py classify (-t <file> | --) -m <mdl> [-e <encoding>]
 
 Options:
     -c <csv>        Training .csv file.
     -C <str>        Valid sklearn classifier [default: RandomForestClassifier].
     -m <mdl>        Output .mdl file.
-    -V <csv>        Output vocabulary .csv file.
     -t <file>       File containing incoming text to be classified. 
     -e <encoding>   File encoding [default: utf-8].
     --              Read incoming text from stdin.
@@ -141,33 +140,45 @@ def normalize_tokens(tokens):
              remove_stop_words(stem_words(tokens))) ]
 
 
-def preprocess_blob(blob):
-    """Preprocess raw text (e.g. from a text file, html page, twitter stream
-    etc.) by normalising and tokenizing into a list of more usable document
-    terms.
-
-    Arguments:
-        blob --
-
-    Returns:
-        a single list of normalised terms associated with a single document
-        blob.
-
-    TODO:
-        - filter markup tokens
+def tokenize(blob, stem_func=None, stop_words=None):
+    """Simple tokenizer that removes tokens based on a number of regular
+    expression patterns. Users may optionally use a stemming function and/or a
+    set of stop words to omit from the final token list.
 
     """
-    tokens = reduce(lambda x, y : x + y,
-                (word_tokenize(s) for s in sent_tokenize(blob.lower())))
-    terms = normalize_tokens(tokens)
+    tokens = reduce(lambda a, b : a + b, 
+                (word_tokenize(s) for s in sent_tokenize(blob)))
 
-    return terms
+    tokens = ( t for t in tokens
+                if (
+                    # remove tokens containing only punctuations.
+                    (not RE_PUNCT_WORD.match(t)) and
+
+                    # remove tokens containing illegal characters.
+                    (not RE_NON_WORD.search(t)) and 
+
+                    # remove tokens containing (potential) ratings (e.g. 8/10).
+                    (not RE_RATING.search(t)) and
+
+                    # remove tokens containing only an integer/float.
+                    (not RE_NUMBER_ONLY.match(t))
+                )
+            )
+
+    if stem_func:
+        tokens = ( stem_func(t) for t in tokens )
+
+    if stop_words:
+        tokens = ( t for t in tokens if t not in stop_words )
+
+    return list(tokens)
 
 
-def make_tfidf_matrix(docs, tokenizer=preprocess_blob, vocab=None):
+def make_tfidf_matrix(docs, **count_vect_kwargs):
     """
     """
-    count_vectoriser = CountVectorizer(tokenizer=tokenizer, vocabulary=vocab)
+    #count_vectoriser = CountVectorizer(tokenizer=tokenize, vocabulary=vocab)
+    count_vectoriser = CountVectorizer(**count_vect_kwargs)
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
     X_counts = count_vectoriser.fit(docs)
@@ -179,37 +190,39 @@ def make_tfidf_matrix(docs, tokenizer=preprocess_blob, vocab=None):
     return X_tfidf, count_vectoriser.vocabulary_
 
 
-def train_model(clf, csv_fn, mdl_fn, vocab_fn):
+def train_model(clf, csv_fn, mdl_fn):
     """
     """
     df = pandas.read_csv(csv_fn, index_col=None, header=None)
     X, Y = df[1], df[0]
 
     # Use the standard tf-idf matrix representation of the dataset.
-    X_tfidf, X_vocab = make_tfidf_matrix(X)
+    X_tfidf, X_vocab = make_tfidf_matrix(X, tokenizer=tokenize)
 
     # Train the model
     clf.fit(X_tfidf.toarray(), Y)
 
-    # Save the vocabulary to disk
-    vocab = pandas.DataFrame(X_vocab.items())
-    vocab.to_csv(vocab_fn, index=None, header=None)
+    # Save the classifier and vocabulary to disk
+    mdl = { "clf" : clf, "vocabulary" : X_vocab }
+    joblib.dump(mdl, mdl_fn)
 
-    # Save (pickle) the model to disk
-    joblib.dump(clf, mdl_fn)
-
-    return clf, vocab
+    return mdl
 
 
-def classify_text(buf, mdl_fn, vocab_fn, encoding):
+def classify_text(buf, mdl_fn, encoding):
     """
     """
     blob = read_blob(buf, encoding=encoding)
-    vocab = read_vocab(vocab_fn)
-    X_tfidf, X_vocab = make_tfidf_matrix([blob], vocab=vocab)
-    clf = joblib.load(mdl_fn)
+    mdl = joblib.load(mdl_fn)
+    clf, vocabulary = mdl["clf"], mdl["vocabulary"]
 
-    return clf.predict(X_tfidf.toarray())
+    X, X_vocab = make_tfidf_matrix([blob], vocabulary=vocab)
+    X = X.toarray() # Some classifiers can't handle sparse matrices.
+
+    # NOTE: predict_proba() and predict() each return an array.
+    y_pred, y_score = clf.predict_proba(X)[0][1], clf.predict(X)[0]
+
+    return y_pred, y_score
 
 
 if __name__ == "__main__":
@@ -218,8 +231,10 @@ if __name__ == "__main__":
     if opts["train"]:
         clf_kwargs = parse_clf_kwargs(opts["<param>"])
         clf = eval(opts["-C"])(**clf_kwargs)
-        train_model(clf, opts["-c"], opts["-m"], opts["-V"])
+        train_model(clf, opts["-c"], opts["-m"])
     elif opts["classify"]:
-        classify_text(opts["-t"], opts["-m"], opts["-V"], opts["-e"])
+        blob = read_blob(opts["-t"])
+        y_pred, y_score = classify_text(blob, opts["-m"], opts["-e"])
+        print y_pred, y_score
     else:
         raise NotImplementedError
