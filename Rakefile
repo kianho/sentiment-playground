@@ -2,7 +2,22 @@ require "rake/clean"
 
 CLEAN
 
+#
+# Workaround function for using /bin/bash instead of /bin/sh, as suggested by
+# http://stackoverflow.com/a/17052592
+#
+# Example:
+#   bash %q( cat < <( seq 1 10 ) )
+#
+def bash(cmd)
+  IO.popen(["/bin/bash", "-c", cmd]) { |io| io.read }
+end
+
 task :dev => [] do
+  bash %q( cat < <( seq 1 10 ) )
+end
+
+task :dev2 => [] do
   sh './sentiment.py train -c ./data/polarity2.0/polarity2.0.csv -C RandomForestClassifier \
           -m ./dev/polarity2.0.mdl -V ./dev/polarity2.0.vocab.csv compute_importances=True n_jobs=4 oob_score=True'
 end
