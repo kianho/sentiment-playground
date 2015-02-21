@@ -123,6 +123,16 @@ def parse_clf_kwargs(params):
     return clf_kwargs
 
 
+def make_clf(clf_name, params):
+    """
+    """
+    import sklearn
+
+    clf_kwargs = parse_clf_kwargs(params)
+
+    return eval(clf_name)(**clf_kwargs)
+
+
 def valid_token(t, stop_words=None):
     if stop_words is None:
         stop_words = set()
