@@ -125,6 +125,23 @@ def do_heldout(opts, ptab_fn):
     return ptab
 
 
+def do_cv(opts):
+    """
+    """
+    df = pandas.read_csv(opts["-c"], index_col=None, header=None)
+    y, X = df[0], df[1]
+    X_tfidf, X_vocab = snt.make_tfidf_matrix(X, toarray=True)
+
+    from sklearn import cross_validation
+    from sklearn import svm
+
+    clf = svm.SVC()
+
+    print cross_validation.cross_val_score(clf, X_tfidf, y, n_jobs=-1)
+
+    return
+
+
 if __name__ == '__main__':
     opts = docopt(__doc__)
 
@@ -135,4 +152,4 @@ if __name__ == '__main__':
         # name.
         mtab = calc_metrics(ptab)
     elif opts["cv"]:
-        raise NotImplementedError
+        do_cv(opts)
