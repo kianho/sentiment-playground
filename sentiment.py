@@ -83,9 +83,16 @@ def read_blob(buf, encoding="utf-8"):
     return str_val
 
 
+# TODO: remove this function.
 def read_vocab(vocab_fn):
     df = pandas.read_csv(vocab_fn, index_col=None, header=None)
     return dict(df.to_records(index=None))
+
+
+def load_model(mdl_fn):
+    mdl = joblib.load(mdl_fn)
+    clf, vocabulary = mdl
+    return clf, vocabulary
 
 
 def parse_clf_kwargs(params):
@@ -174,10 +181,13 @@ def tokenize(blob, stem_func=None, stop_words=None):
     return list(tokens)
 
 
-def make_tfidf_matrix(docs, **count_vect_kwargs):
+def make_tfidf_matrix(docs, toarray=True, **count_vect_kwargs):
     """
     """
-    #count_vectoriser = CountVectorizer(tokenizer=tokenize, vocabulary=vocab)
+
+    # Set the default count_vect_kwargs values.
+    count_vect_kwargs.setdefault("tokenizer", tokenize)
+
     count_vectoriser = CountVectorizer(**count_vect_kwargs)
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
@@ -186,6 +196,9 @@ def make_tfidf_matrix(docs, **count_vect_kwargs):
 
     X_tfidf = tfidf_transformer.fit(X_counts)
     X_tfidf = tfidf_transformer.transform(X_counts)
+
+    if toarray:
+        X_tfidf = X_tfidf.toarray()
 
     return X_tfidf, count_vectoriser.vocabulary_
 
@@ -200,10 +213,11 @@ def train_model(clf, csv_fn, mdl_fn):
     X_tfidf, X_vocab = make_tfidf_matrix(X, tokenizer=tokenize)
 
     # Train the model
-    clf.fit(X_tfidf.toarray(), Y)
+    clf.fit(X_tfidf, Y)
 
-    # Save the classifier and vocabulary to disk
-    mdl = { "clf" : clf, "vocabulary" : X_vocab }
+    # Save the classifier and vocabulary to disk i.e. as a single model (mdl)
+    # file.
+    mdl = (clf, X_vocab)
     joblib.dump(mdl, mdl_fn)
 
     return mdl
@@ -213,9 +227,7 @@ def classify_text(buf, mdl_fn, encoding):
     """
     """
     blob = read_blob(buf, encoding=encoding)
-    mdl = joblib.load(mdl_fn)
-    clf, vocabulary = mdl["clf"], mdl["vocabulary"]
-
+    clf, vocab = joblib.load(mdl_fn)
     X, X_vocab = make_tfidf_matrix([blob], vocabulary=vocab)
     X = X.toarray() # Some classifiers can't handle sparse matrices.
 
