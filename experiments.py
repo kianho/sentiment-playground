@@ -23,42 +23,13 @@ import sys
 import numpy
 import pandas
 
+from sentiment import tokenize
 from sentiment import make_tfidf_matrix, read_vocab, PORTER_STEMMER, STOP_WORDS
 from sentiment import RE_PUNCT_WORD, RE_NON_WORD, RE_RATING, RE_NUMBER_ONLY
 from nltk.tokenize import sent_tokenize, word_tokenize
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.externals import joblib
 from docopt import docopt
-
-
-def tokenize(blob, stem_func=None, stop_words=None):
-    tokens = reduce(lambda a, b : a + b, 
-                (word_tokenize(s) for s in sent_tokenize(blob)))
-
-    tokens = ( t for t in tokens
-                if (
-                    # remove tokens containing only punctuations.
-                    (not RE_PUNCT_WORD.match(t)) and
-
-                    # remove tokens containing illegal characters.
-                    (not RE_NON_WORD.search(t)) and 
-
-                    # remove tokens containing (potential) ratings (e.g. 8/10).
-                    (not RE_RATING.search(t)) and
-
-                    # remove tokens containing only an integer/float.
-                    (not RE_NUMBER_ONLY.match(t))
-                )
-            )
-
-    if stem_func:
-        tokens = ( stem_func(t) for t in tokens )
-
-    if stop_words:
-        tokens = ( t for t in tokens if t not in stop_words )
-
-    return list(tokens)
-
 
 
 if __name__ == '__main__':
