@@ -20,42 +20,71 @@ Options:
 
 import os
 import sys
+import pprint
 import numpy
 import pandas
+import sklearn
+import sentiment
 
 from sentiment import tokenize
 from sentiment import make_tfidf_matrix, read_vocab, PORTER_STEMMER, STOP_WORDS
 from sentiment import RE_PUNCT_WORD, RE_NON_WORD, RE_RATING, RE_NUMBER_ONLY
 from nltk.tokenize import sent_tokenize, word_tokenize
+
+from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+
+from sklearn.datasets import make_classification
 from sklearn.externals import joblib
+from sklearn.grid_search import GridSearchCV, ParameterGrid
+from sklearn.cross_validation import StratifiedKFold
+
 from docopt import docopt
 
+# Initialise the global numpy random seed.
+numpy.random.seed(12345)
 
-if __name__ == '__main__':
-    csv_fn = "./data/polarity2.0/polarity2.0.csv"
-    mdl_fn = "./mdl/polarity2.0.example.mdl"
-    vocab_fn = "./mdl/polarity2.0.example.vocab.csv"
+# Dataset
+csv_fn = "./data/polarity2.0/polarity2.0.csv"
 
-    if os.path.exists(mdl_fn):
-        clf = joblib.load(mdl_fn)
-        vocab = dict((v,k) for k,v in read_vocab(vocab_fn).items())
-        var_imps = sorted(((imp, vocab[i]) for (i, imp) in enumerate(clf.feature_importances_)))
-        print var_imps
-    else:
-        df = pandas.read_csv(csv_fn, index_col=None, header=None)
-        y, X = df[0], df[1]
+# Load the raw dataset.
+df = pandas.read_csv(csv_fn, index_col=None, header=None)
 
-        X_tfidf, X_vocab = make_tfidf_matrix(X,
-                tokenizer=lambda s : tokenize(s, stop_words=STOP_WORDS))
+# UNCOMMENT WHEN READY
+# Pre-process the dataset into a sparse tf-idf matrix and vocab. dictionary.
+#X, X_vocab = sentiment.make_tfidf_matrix(df[1], toarray=True)
+#y = df[0]
+X, y = make_classification(n_samples=2000, n_features=50, scale=None, shift=None)
 
-        clf = RandomForestClassifier(n_estimators=500, compute_importances=True,
-                oob_score=True, n_jobs=4, verbose=1)
-        clf.fit(X_tfidf.toarray(), y)
+# Scale to unit variance with a 0 mean.
+X = sklearn.preprocessing.scale(X)
 
-        # Write the model to disk.
-        joblib.dump(clf, mdl_fn)
+# Cross-validation generator and instantiate the folds in a list so we can
+# re-use them for other estimators.
+cv_gen =  StratifiedKFold(y, n_folds=10, shuffle=True)
+cv_folds = list(cv_gen)
 
-        # Write the vocabulary to disk
-        vocab = pandas.DataFrame(X_vocab.items())
-        vocab.to_csv(vocab_fn, index=None, header=None)
+
+# Perform a series of cross-validation grid searches over several different
+# types of classifiers.
+
+# Grid search over the SGDClassifier loss functions.
+sgdc_grid =  { "loss" : ["hinge", "log"] }
+sgdc_grid_clf = GridSearchCV(SGDClassifier(random_state=12345), param_grid=sgdc_grid, cv=cv_folds,
+        scoring="roc_auc", verbose=3, n_jobs=-1)
+sgdc_grid_clf.fit(X, y)
+
+# Grid search over naive Bayes (empty grid i.e. standard 10-fold cv).
+nbayes_clf = GridSearchCV(GaussianNB(), param_grid={}, cv=cv_folds,
+        scoring="roc_auc", verbose=3, n_jobs=-1)
+nbayes_clf.fit(X, y)
+
+# Grid search over random forest.
+_, n_feats = X.shape
+
+
+m_try = int(numpy.sqrt(n_feats))
+#rf_grid = { "max_features" : [m_try, 2*m_try, m_try/2] }
+rf_grid_clf = GridSearchCV(RandomForestClassifier(n_estimators=1000),
+        param_grid={}, cv=cv_folds, scoring="roc_auc", verbose=3, n_jobs=-1)
