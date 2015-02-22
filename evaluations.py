@@ -13,7 +13,7 @@ Description:
 
 Usage:
     evaluations.py heldout  -m <mdl> -c <csv>
-    evaluations.py cv       -c <csv> -k <k> [-r <nreps>] [-R <seed>] [-C <classifier>] [<param> ...]
+    evaluations.py cv       -c <csv> -k <k> [-r <nreps>] [-d] [-R <seed>] [-C <classifier>] [<param> ...]
 
 Options:
     -C <classifier>     sklearn classifier name [default: RandomForestClassifier].
@@ -22,17 +22,20 @@ Options:
     -k <nfolds>         Num. of CV folds.
     -r <nreps>          Num. of CV repetitions [default: 1].
     -R <seed>           Integer random seed [default: 54321].  
+    -d                  Use dense dataset matrices.
 
 """
 
 import os
 import sys
 import pandas
-import sentiment as snt
+import sentiment as sentiment
 import sklearn
 
 from docopt import docopt
+from sklearn import cross_validation, svm
 from sklearn.metrics import roc_curve
+from sklearn.pipeline import Pipeline
 
 
 def do_roc_curve(y_correct, y_score):
@@ -108,14 +111,14 @@ def do_heldout(opts, ptab_fn):
     """
     """
 
-    clf, vocabulary = snt.load_model(opts["-m"])
+    clf, vocabulary = sentiment.load_model(opts["-m"])
     df = pandas.read_csv(opts["-c"], index_col=None, header=None)
     y, X = df[0], df[1]
-    X_tfidf, X_vocab = snt.make_tfidf_matrix(X, toarray=True,
+    X_tfidf, X_vocab = sentiment.make_tfidf_matrix(X, toarray=True,
             vocabulary=vocabulary)
     y_pred, y_score = clf.predict(X_tfidf), clf.predict_proba(X_tfidf)
 
-    # compute the ptab and write it to disk.
+    # generate the ptab and write it to disk.
     ptab = pandas.concat(
             [pandas.Series(y),
              pandas.Series(y_pred),
@@ -128,16 +131,17 @@ def do_heldout(opts, ptab_fn):
 def do_cv(opts):
     """
     """
+
     df = pandas.read_csv(opts["-c"], index_col=None, header=None)
     y, X = df[0], df[1]
-    X_tfidf, X_vocab = snt.make_tfidf_matrix(X, toarray=True)
+    X_tfidf, X_vocab = sentiment.make_tfidf_matrix(X, toarray=opts["-d"])
+    X_tfidf = sklearn.preprocessing.scale(X_tfidf.toarray())
 
-    from sklearn import cross_validation
-    from sklearn import svm
-
-    clf = svm.SVC()
+    clf = sentiment.make_clf(opts["-C"], opts["<param>"])
 
     print cross_validation.cross_val_score(clf, X_tfidf, y, n_jobs=-1)
+
+    # generate the ptab and write it to disk.
 
     return
 
@@ -152,4 +156,12 @@ if __name__ == '__main__':
         # name.
         mtab = calc_metrics(ptab)
     elif opts["cv"]:
-        do_cv(opts)
+        #do_cv(opts)
+        from sklearn.datasets import make_classification
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.cross_validation import StratifiedKFold
+
+        X, y = make_classification(n_features=20, shift=None, scale=None)
+
+        for train_ixs, test_ixs in StratifiedKFold(y, n_folds=10, shuffle=True):
+            print train_ixs, test_ixs
