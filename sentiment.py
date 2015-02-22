@@ -31,6 +31,7 @@ import re
 import codecs
 import numpy
 import pandas
+import sklearn
 
 from functools import reduce
 
@@ -38,7 +39,10 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+# Classifiers
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression, SGDClassifier
+
 from sklearn.externals import joblib
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
@@ -124,12 +128,7 @@ def parse_clf_kwargs(params):
 
 
 def make_clf(clf_name, params):
-    """
-    """
-    import sklearn
-
     clf_kwargs = parse_clf_kwargs(params)
-
     return eval(clf_name)(**clf_kwargs)
 
 

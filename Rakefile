@@ -14,7 +14,7 @@ def bash(cmd)
 end
 
 task :default=> [] do
-  sh './evaluations.py cv -c ./data/polarity2.0/polarity2.0.csv -k 10'
+  sh './evaluations.py cv -c ./data/polarity2.0/polarity2.0.csv -k 10 -C SGDClassifier loss=log'
 end
 
 task :default2=> [] do
