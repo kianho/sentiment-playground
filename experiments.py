@@ -31,8 +31,9 @@ from sentiment import make_tfidf_matrix, read_vocab, PORTER_STEMMER, STOP_WORDS
 from sentiment import RE_PUNCT_WORD, RE_NON_WORD, RE_RATING, RE_NUMBER_ONLY
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+from sklearn.svm import SVC
 from sklearn.linear_model import SGDClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.naive_bayes import GaussianNB
 
 from sklearn.datasets import make_classification
@@ -65,7 +66,6 @@ X = sklearn.preprocessing.scale(X)
 cv_gen =  StratifiedKFold(y, n_folds=10, shuffle=True)
 cv_folds = list(cv_gen)
 
-
 # Perform a series of cross-validation grid searches over several different
 # types of classifiers.
 
@@ -80,11 +80,23 @@ nbayes_clf = GridSearchCV(GaussianNB(), param_grid={}, cv=cv_folds,
         scoring="roc_auc", verbose=3, n_jobs=-1)
 nbayes_clf.fit(X, y)
 
-# Grid search over random forest.
+# Random forest.
 _, n_feats = X.shape
 
-
-m_try = int(numpy.sqrt(n_feats))
-#rf_grid = { "max_features" : [m_try, 2*m_try, m_try/2] }
 rf_grid_clf = GridSearchCV(RandomForestClassifier(n_estimators=1000),
         param_grid={}, cv=cv_folds, scoring="roc_auc", verbose=3, n_jobs=-1)
+
+# Extremely random trees.
+ert_grid_clf = GridSearchCV(ExtraTreesClassifier(n_estimators=1000),
+        param_grid={}, cv=cv_folds, scoring="roc_auc", verbose=3, n_jobs=-1)
+
+# SVMs
+C = [.1, 1, 10, 100]
+svm_grid = [
+        { "kernel" : ["linear"], "C" : C },
+        { "kernel" : ["rbf"], "gamma" : [0.1, 0.2, 0.5, 1.0], "C" : C },
+        { "kernel" : ["poly"], "degree" : [2,3], "C" : C }
+    ]
+svm_grid_clf = GridSearchCV(SVC(), param_grid=svm_grid, scoring="roc_auc",
+        verbose=3, n_jobs=-1)
+print svm_grid_clf.fit(X, y).grid_scores_
