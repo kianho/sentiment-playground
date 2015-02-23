@@ -13,6 +13,7 @@ def bash(cmd)
   IO.popen(["/bin/bash", "-c", cmd]) { |io| io.read }
 end
 
+
 task :default=> [] do
   sh './evaluations.py cv -c ./data/polarity2.0/polarity2.0.csv -k 10 -C SGDClassifier loss=log'
 end
@@ -54,6 +55,7 @@ file "data/polarity2.0/polarity2.0.csv" => ["data/polarity2.0/txt_sentoken/"] do
   sh "ls -1 #{src[0]}/neg/* | ./make_train_data.py -l 0 > #{t.name}"
   sh "ls -1 #{src[0]}/pos/* | ./make_train_data.py -l 1 >> #{t.name}"
 end
+
 
 CLEAN << ["data/polarity2.0/polarity2.0.csv",
           "data/sfu_review_corpus.csv",
