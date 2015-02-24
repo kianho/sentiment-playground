@@ -190,7 +190,7 @@ def tokenize(blob, stem_func=None, stop_words=None):
     return list(tokens)
 
 
-def make_tfidf_matrix(docs, toarray=True, **count_vect_kwargs):
+def make_term_matrix(docs, toarray=True, tfidf=True, **count_vect_kwargs):
     """
     """
 
@@ -200,16 +200,17 @@ def make_tfidf_matrix(docs, toarray=True, **count_vect_kwargs):
     count_vectoriser = CountVectorizer(**count_vect_kwargs)
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
-    X_counts = count_vectoriser.fit(docs)
-    X_counts = count_vectoriser.transform(docs)
+    X = count_vectoriser.fit_transform(docs)
+    #X = count_vectoriser.transform(docs)
 
-    X_tfidf = tfidf_transformer.fit(X_counts)
-    X_tfidf = tfidf_transformer.transform(X_counts)
+    if tfidf:
+        X = tfidf_transformer.fit_transform(X)
+        #X = tfidf_transformer.transform(X)
 
     if toarray:
-        X_tfidf = X_tfidf.toarray()
+        X = X.toarray()
 
-    return X_tfidf, count_vectoriser.vocabulary_
+    return X, count_vectoriser.vocabulary_
 
 
 def train_model(clf, csv_fn, mdl_fn):

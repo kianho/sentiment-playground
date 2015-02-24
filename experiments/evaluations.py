@@ -161,7 +161,7 @@ if __name__ == '__main__':
         from sklearn.preprocessing import StandardScaler
         from sklearn.cross_validation import StratifiedKFold
 
-        X, y = make_classification(n_features=20, shift=None, scale=None)
+        X, y = make_classification(n_features=20, shift=None, scale=None, n_classes=2)
 
         for train_ixs, test_ixs in StratifiedKFold(y, n_folds=10, shuffle=True):
             print train_ixs, test_ixs
