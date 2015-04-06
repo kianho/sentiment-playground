@@ -2,12 +2,6 @@
 # encoding: utf-8
 """
 
-Date:
-    Mon Feb 16 15:40:16 AEDT 2015
-
-Author:
-    Kian Ho <hui.kian.ho@gmail.com>
-
 Description:
     ...
 
@@ -87,12 +81,6 @@ def read_blob(buf, encoding="utf-8"):
     return str_val
 
 
-# TODO: remove this function.
-def read_vocab(vocab_fn):
-    df = pandas.read_csv(vocab_fn, index_col=None, header=None)
-    return dict(df.to_records(index=None))
-
-
 def load_model(mdl_fn):
     mdl = joblib.load(mdl_fn)
     clf, vocabulary = mdl
@@ -125,35 +113,6 @@ def parse_clf_kwargs(params):
         clf_kwargs[k] = parse_val(s)
 
     return clf_kwargs
-
-
-def make_clf(clf_name, params):
-    clf_kwargs = parse_clf_kwargs(params)
-    return eval(clf_name)(**clf_kwargs)
-
-
-def valid_token(t, stop_words=None):
-    if stop_words is None:
-        stop_words = set()
-    return ((not NON_TOKEN_RE.match(t))
-            and RE_ALPHA.match(t) and (t.lower() not in stop_words))
-
-
-def remove_non_words(tokens):
-    return ( t for t in tokens if valid_token(t) )
-
-
-def remove_stop_words(tokens, stop_words=STOP_WORDS):
-    return ( t for t in tokens if t not in stop_words )
-
-
-def stem_words(tokens):
-    return ( PORTER_STEMMER.stem(t) for t in tokens )
-
-
-def normalize_tokens(tokens):
-    return [ t.lower() for t in remove_non_words(
-             remove_stop_words(stem_words(tokens))) ]
 
 
 def tokenize(blob, stem_func=None, stop_words=None):
@@ -191,7 +150,8 @@ def tokenize(blob, stem_func=None, stop_words=None):
 
 
 def make_term_matrix(docs, toarray=True, tfidf=True, **count_vect_kwargs):
-    """
+    """Generate the overall term matrix for a set of documents.
+
     """
 
     # Set the default count_vect_kwargs values.
@@ -201,11 +161,9 @@ def make_term_matrix(docs, toarray=True, tfidf=True, **count_vect_kwargs):
     tfidf_transformer = TfidfTransformer(use_idf=True)
 
     X = count_vectoriser.fit_transform(docs)
-    #X = count_vectoriser.transform(docs)
 
     if tfidf:
         X = tfidf_transformer.fit_transform(X)
-        #X = tfidf_transformer.transform(X)
 
     if toarray:
         X = X.toarray()
@@ -214,8 +172,10 @@ def make_term_matrix(docs, toarray=True, tfidf=True, **count_vect_kwargs):
 
 
 def train_model(clf, csv_fn, mdl_fn):
+    """Train a classifier model and write it to disk.
+
     """
-    """
+
     df = pandas.read_csv(csv_fn, index_col=None, header=None)
     X, Y = df[1], df[0]
 
@@ -234,8 +194,10 @@ def train_model(clf, csv_fn, mdl_fn):
 
 
 def classify_text(buf, mdl_fn, encoding):
+    """Classify a string using a model.
+
     """
-    """
+
     blob = read_blob(buf, encoding=encoding)
     clf, vocab = joblib.load(mdl_fn)
     X, X_vocab = make_tfidf_matrix([blob], vocabulary=vocab)
